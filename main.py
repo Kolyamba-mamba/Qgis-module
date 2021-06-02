@@ -121,6 +121,9 @@ def main():
     city = find_city(tree, jkh_data)
     building_list = prepare_building(jkh_data, osm_list, city)
     building_with_location = geocode(building_list, city)
+    data = list((a.latitude, a.longitude, a.inhabitants_count, a.address) for a in building_with_location)
+    result = pd.DataFrame(data, columns=['Latitude', 'Longitude', 'InhabitantsCount', 'Address'])
+    result.to_csv('building.csv', index=False)
 
 
 if __name__ == '__main__':
