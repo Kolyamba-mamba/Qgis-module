@@ -99,20 +99,29 @@ def prepare_building(jkh_data, osm_list, city):
     return building_list
 
 
-def main():
+# геокодирование
+def geocode(building_list, city):
+    result_list = []
     geolocator = Nominatim(user_agent="qgisModule")
-    tree = ET.parse('C:\\Users\\mrkol\\Downloads\\export (1).osm')
+    for building in building_list:
+        addr_tmp = [city, building.street, building.housenumber.replace(' ', '').lower()]
+        location = geolocator.geocode(' '.join(addr_tmp))
+        if location:
+            building_with_location = \
+                BuildingWithLocationModel(building.housenumber, building.street, building.building_type, building.area,
+                                          building.inhabitants_count, location.latitude, location.longitude, location.address)
+            result_list.append(building_with_location)
+    return result_list
+
+
+def main():
+    tree = ET.parse('C:\\Users\\mrkol\\Downloads\\export.osm')
     jkh_data = pd.read_csv('C:\\Users\\mrkol\\Downloads\\export-reestrmkd-31-20210601\\export-reestrmkd-31-20210601.csv', sep=';')
     osm_list = parse_osm(tree, 'way') + parse_osm(tree, 'relation')
     city = find_city(tree, jkh_data)
     building_list = prepare_building(jkh_data, osm_list, city)
+    building_with_location = geocode(building_list, city)
 
 
 if __name__ == '__main__':
     main()
-
-
-    # location = geolocator.geocode(d[0] + ' ' + d[1] + ' ' + str(d[2]).replace(' ','').lower())
-    # print(location.address + " " + str(location.latitude) + " " + str(location.longitude))
-# location = geolocator.geocode("Белгород улица Свердлова 12")
-# print(location.address + " " + str(location.latitude) + " " + str(location.longitude))
