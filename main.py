@@ -1,8 +1,9 @@
 import pandas as pd
 import xml.etree.cElementTree as ET
 from geopy.geocoders import Nominatim
-from models.OsmWayModel import OsmWayModel
+from models.OsmBuildingModel import OsmBuildingModel
 from models.BuildingModel import BuildingModel
+from models.BuildingWithLocationModel import BuildingWithLocationModel
 
 
 # получение города
@@ -44,7 +45,7 @@ def parse_osm(tree, field_name):
             building_type = building_type_tmp.attrib['v']
 
         if housenumber is not None and street is not None and building_type is not None:
-            osm_way_model = OsmWayModel(housenumber, street, building_type)
+            osm_way_model = OsmBuildingModel(housenumber, street, building_type)
             osm_list.append(osm_way_model)
 
     return osm_list

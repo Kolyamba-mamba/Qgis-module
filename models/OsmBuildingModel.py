@@ -1,4 +1,4 @@
-class OsmWayModel:
+class OsmBuildingModel:
     """Класс данных из osm после парсинга"""
 
     def __init__(self, housenumber, street, building_type):
