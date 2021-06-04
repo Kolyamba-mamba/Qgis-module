@@ -29,6 +29,8 @@ def find_city(tree, jkh):
 def parse_osm(tree, field_name):
     osm_list = []
     for field in tree.findall(field_name):
+        osmid = field.attrib['id']
+
         housenumber = None
         housenumber_tmp = field.find("tag[@k='addr:housenumber']")
         if housenumber_tmp is not None:
@@ -44,8 +46,8 @@ def parse_osm(tree, field_name):
         if building_type_tmp is not None:
             building_type = building_type_tmp.attrib['v']
 
-        if housenumber is not None and street is not None and building_type is not None:
-            osm_way_model = OsmBuildingModel(housenumber, street, building_type)
+        if osmid is not None and housenumber is not None and street is not None and building_type is not None:
+            osm_way_model = OsmBuildingModel(osmid, housenumber, street, building_type)
             osm_list.append(osm_way_model)
 
     return osm_list
@@ -53,37 +55,37 @@ def parse_osm(tree, field_name):
 
 # сопоставляем данные осм и реестра жкх
 def prepare_building(jkh_data, osm_list, city):
+    l = len(jkh_data.values[0])
     used_ways = []
     building_list = []
-    for d in jkh_data[["formalname_city", "formalname_street", "house_number", "area_residential", "area_total",
-                       "quarters_count"]].values:
-        if d[0].lower() == city.lower():
-            if pd.isna(d[1]) or pd.isna(d[2]):
+    for d in jkh_data.values:
+        if d[10].lower() == city.lower():
+            if pd.isna(d[12]) or pd.isna(d[13]):
                 continue
             for way in osm_list:
                 if way not in used_ways \
-                        and d[1].lower() in str(way.street).lower() \
-                        and d[2].lower() == way.housenumber.lower():
+                        and d[12].lower() in str(way.street).lower() \
+                        and d[13].lower() == way.housenumber.lower():
                     building = None
                     # Если есть площадь жилых помещений
-                    if not pd.isna(d[3]):
-                        area = d[3]
+                    if not pd.isna(d[35]):
+                        area = d[35]
                         inhabitants_count = int(float(area.replace(',', '.')) // 25)
-                        building = BuildingModel(way.housenumber, way.street, way.building_type, area,
-                                                 inhabitants_count)
+                        building = BuildingModel(way.osmid, way.housenumber, way.street, 'reforma', area,
+                                                 inhabitants_count, d)
                     # # Иначе если есть общая площадь
-                    elif not pd.isna(d[4]):
-                        area = d[4]
+                    elif not pd.isna(d[34]):
+                        area = d[34]
                         inhabitants_count = int(float(area.replace(',', '.')) // 25)
-                        building = BuildingModel(way.housenumber, way.street, way.building_type, area,
-                                                 inhabitants_count)
+                        building = BuildingModel(way.osmid, way.housenumber, way.street, 'reforma', area,
+                                                 inhabitants_count, d)
                     # Иначе если есть кол-во квартир
-                    elif not pd.isna(d[5]):
+                    elif not pd.isna(d[31]):
                         # площадь считаем, как произведение квартир в доме и среднего размера квартиры в России
-                        area = int(d[5]) * 50
+                        area = int(d[31]) * 50
                         inhabitants_count = int(float(area) // 25)
-                        building = BuildingModel(way.housenumber, way.street, way.building_type, area,
-                                                 inhabitants_count)
+                        building = BuildingModel(way.osmid, way.housenumber, way.street, 'reforma', area,
+                                                 inhabitants_count, d)
                     if building:
                         used_ways.append(way)
                         building_list.append(building)
@@ -92,7 +94,7 @@ def prepare_building(jkh_data, osm_list, city):
     for way in osm_list:
         if way not in used_ways:
             if way.building_type in valid_building_types:
-                building = BuildingModel(way.housenumber, way.street, way.building_type, None, 3)
+                building = BuildingModel(way.osmid, way.housenumber, way.street, way.building_type, None, 3, [None for _ in range(l)])
                 used_ways.append(way)
                 building_list.append(building)
 
@@ -108,8 +110,9 @@ def geocode(building_list, city):
         location = geolocator.geocode(' '.join(addr_tmp))
         if location:
             building_with_location = \
-                BuildingWithLocationModel(building.housenumber, building.street, building.building_type, building.area,
-                                          building.inhabitants_count, location.latitude, location.longitude, location.address)
+                BuildingWithLocationModel(building.osmid, building.housenumber, building.street, building.building_type,
+                                          building.inhabitants_count, location.latitude, location.longitude,
+                                          location.address, building.jkh)
             result_list.append(building_with_location)
     return result_list
 
@@ -121,8 +124,9 @@ def main():
     city = find_city(tree, jkh_data)
     building_list = prepare_building(jkh_data, osm_list, city)
     building_with_location = geocode(building_list, city)
-    data = list((a.latitude, a.longitude, a.inhabitants_count, a.address) for a in building_with_location)
-    result = pd.DataFrame(data, columns=['Latitude', 'Longitude', 'InhabitantsCount', 'Address'])
+    names = jkh_data.columns.values
+    data = list((a.osmid, a.latitude, a.longitude, a.address, a.inhabitants_count, *a.jkh) for a in building_with_location)
+    result = pd.DataFrame(data, columns=['Osmid', 'Latitude', 'Longitude', 'GeocodeAddress', 'InhabitantsCount', *names])
     result.to_csv('building.csv', index=False)
 
 
