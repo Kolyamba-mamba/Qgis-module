@@ -1,5 +1,5 @@
 import pandas as pd
-import xml.etree.cElementTree as ET
+import xml.etree.ElementTree as ET
 from geopy.geocoders import Nominatim
 from models.OsmBuildingModel import OsmBuildingModel
 from models.BuildingModel import BuildingModel
