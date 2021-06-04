@@ -4,6 +4,20 @@ from geopy.geocoders import Nominatim
 from models.OsmBuildingModel import OsmBuildingModel
 from models.BuildingModel import BuildingModel
 from models.BuildingWithLocationModel import BuildingWithLocationModel
+import argparse
+import sys
+import os
+
+
+def parse_args(args):
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('-osmPath', type=str, dest='osmPath',
+                        default='C:/Users/mrkol/Downloads/export.osm',
+                        help='Путь до .osm файла')
+    parser.add_argument('-jkhPath', type=str, dest='jkhPath',
+                        default='C:/Users/mrkol/Downloads/export-reestrmkd-31-20210601/export-reestrmkd-31-20210601.csv',
+                        help='Путь до .csv файла реформы ЖКХ')
+    return parser.parse_args(args)
 
 
 # получение города
@@ -118,8 +132,15 @@ def geocode(building_list, city):
 
 
 def main():
-    tree = ET.parse('C:\\Users\\mrkol\\Downloads\\export.osm')
-    jkh_data = pd.read_csv('C:\\Users\\mrkol\\Downloads\\export-reestrmkd-31-20210601\\export-reestrmkd-31-20210601.csv', sep=';')
+    args = parse_args(sys.argv[1:])
+    if not os.path.exists(args.osmPath):
+        print("OSM Файла " + args.osmPath + " не существует")
+        return 0
+    if not os.path.exists(args.jkhPath):
+        print("Файла реформы ЖКХ " + args.jkhPath + " не существует")
+        return 0
+    tree = ET.parse(args.osmPath)
+    jkh_data = pd.read_csv(args.jkhPath, sep=';')
     osm_list = parse_osm(tree, 'way') + parse_osm(tree, 'relation')
     city = find_city(tree, jkh_data)
     building_list = prepare_building(jkh_data, osm_list, city)
